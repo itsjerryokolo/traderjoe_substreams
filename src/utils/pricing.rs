@@ -12,7 +12,7 @@ pub fn get_price_y(
     let basis_point_max: BigDecimal = BigDecimal::from_str("10000").unwrap();
     let bin_step: BigDecimal = BigDecimal::from(bin_step);
     let real_shift: i32 = 8388608;
-    let big_decimal_one: BigDecimal = BigDecimal::new(BigInt::from_str("1").unwrap(), 0);
+    let big_decimal_one: BigDecimal = BigDecimal::from_str("1").unwrap();
 
     let bp_val = big_decimal_one + bin_step / basis_point_max;
 

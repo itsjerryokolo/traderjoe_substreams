@@ -5,7 +5,7 @@ mod utils;
 use std::str::FromStr;
 
 use crate::utils::{
-    helper::{append_0x, get_sorted_token},
+    helper::{append_0x, generate_key, get_sorted_token0, get_sorted_token1},
     pricing::get_price_y,
     rpc::get_token_data,
 };
@@ -46,7 +46,7 @@ pub fn map_pairs_created(block: eth::v2::Block) -> Result<dexcandlesV2::Pairs, E
                 let token_y_data = get_token_data(&pair.token_y);
 
                 dexcandlesV2::Pair {
-                    address: append_0x(&Hex(pair.lb_pair).to_string()),
+                    address: append_0x(&Hex(pair.lb_pair).to_string()).to_lowercase(),
                     token_x: Some(dexcandlesV2::Token {
                         address: append_0x(&Hex(pair.token_x).to_string()),
                         decimal: token_x_data.2,
@@ -78,7 +78,7 @@ pub fn map_swaps(block: eth::v2::Block) -> Result<dexcandlesV2::Swaps, Error> {
             log::info!("Swap Event Found");
 
             swaps.push(dexcandlesV2::Swap {
-                pair_address: append_0x(&Hex(&log.address()).to_string()),
+                pair_address: append_0x(&Hex(&log.address()).to_string()).to_lowercase(),
                 amounts_in: swap_event.amounts_in.to_vec(),
                 amounts_out: swap_event.amounts_out.to_vec(),
                 id: swap_event.id.to_string(),
@@ -95,7 +95,7 @@ pub fn map_swaps(block: eth::v2::Block) -> Result<dexcandlesV2::Swaps, Error> {
 #[substreams::handlers::store]
 pub fn store_pairs(i: dexcandlesV2::Pairs, o: StoreSetProto<dexcandlesV2::Pair>) {
     for pair in i.pairs {
-        o.set(0, format!("Pair: {}", pair.address), &pair);
+        o.set(0, generate_key("Pair", &pair.address), &pair);
     }
 }
 
@@ -116,11 +116,11 @@ pub fn store_candles(
     for s in swap.swaps {
         log::info!("Candle Found - 1");
 
-        let pair_address = s.pair_address.to_lowercase();
+        let pair_address = s.pair_address;
 
         log::info!(&pair_address);
 
-        let pairs = pair.get_last(format!("Pair: {}", pair_address));
+        let pairs = pair.get_last(generate_key("Pair", &pair_address));
 
         log::info!("Candle Found - 2");
 
@@ -134,11 +134,14 @@ pub fn store_candles(
                 let token_x_address = token_x.address;
                 let token_y_address = token_y.address;
 
+                log::info!("TokenX Address : {}", &token_x_address.to_string());
+                log::info!("TokenY Address: {}", &token_y_address.to_string());
+
                 let token_x_decimals = token_x.decimal;
                 let token_y_decimals = token_y.decimal;
 
-                let token0 = get_sorted_token(&token_x_address, &token_y_address);
-                let token1 = get_sorted_token(&token_y_address, &token_x_address);
+                let token0 = get_sorted_token0(&token_x_address, &token_y_address);
+                let token1 = get_sorted_token1(&token_x_address, &token_y_address);
 
                 let price_y = get_price_y(
                     BigInt::from_str(p.bin_step.as_str()).unwrap(),
@@ -152,7 +155,10 @@ pub fn store_candles(
                 );
                 let price_x = BigDecimal::from_str("1").unwrap() / &price_y;
 
-                log::info!(&price_x.to_string());
+                log::info!("PriceX : {}", &price_x.to_string());
+                log::info!("PriceY : {}", &price_y.to_string());
+                log::info!("isSortedToken0 : {}", &token0.to_string());
+                log::info!("isSortedToken1 : {}", &token1.to_string());
 
                 let price =
                     get_sorted_price(&token0, &token1, &price_x.to_string(), &price_y.to_string());
@@ -201,8 +207,8 @@ pub fn store_tokens(i: dexcandlesV2::Pairs, o: StoreSetProto<dexcandlesV2::Token
     for pair in i.pairs {
         let token_x = &pair.token_x.unwrap();
         let token_y = &pair.token_y.unwrap();
-        o.set(0, format!("Token: {}", &token_x.address), &token_x);
-        o.set(0, format!("Token: {}", &token_y.address), &token_y);
+        o.set(0, generate_key("Token", &token_x.address), &token_x);
+        o.set(0, generate_key("Token", &token_y.address), &token_y);
     }
 }
 
