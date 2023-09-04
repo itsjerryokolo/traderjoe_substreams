@@ -1,0 +1,34 @@
+type Token @entity {
+  id: ID! # token address
+  # mirrored from smart contract
+  symbol: String!
+  name: String!
+  decimals: BigInt!
+}
+
+type Pair @entity {
+  id: ID!
+
+  # mirrored from smart contract
+  tokenX: Token!
+  tokenY: Token!
+  binStep: BigInt!
+}
+
+type Candle @entity {
+  id: ID! # period start timestamp + tokenX + tokenY
+  time: Int!
+  period: Int!
+  lastBlock: Int!
+
+  token0: Bytes!
+  token1: Bytes!
+
+  token0TotalAmount: BigInt!
+  token1TotalAmount: BigInt!
+
+  high: BigDecimal!
+  open: BigDecimal!
+  close: BigDecimal!
+  low: BigDecimal!
+}

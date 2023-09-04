@@ -1,0 +1,73 @@
+specVersion: v0.1.0
+package:
+  name: 'traderjoe'
+  version: v0.0.1
+
+imports:
+  entity: https://github.com/streamingfast/substreams-entity-change/releases/download/v0.2.1/substreams-entity-change-v0.2.1.spkg
+
+protobuf:
+  files:
+    - dexcandlesv2.proto
+  importPaths:
+    - ./proto
+
+binaries:
+  default:
+    type: wasm/rust-v1
+    file: ./target/wasm32-unknown-unknown/release/substreams.wasm
+
+modules:
+  -  name: map_pairs_created
+     kind: map
+     initialBlock: 17821282
+     inputs:
+       - source: sf.ethereum.type.v2.Block
+     output:
+      type: proto:traderjoe.dexcandlesv2.Pairs
+
+  - name: store_pairs
+    kind: store
+    initialBlock: 17821282
+    updatePolicy: set
+    valueType: proto:traderjoe.dexcandlesv2.Pair
+    inputs:
+      - map: map_pairs_created
+
+  -  name: map_swaps
+     kind: map
+     initialBlock: 17821282
+     inputs:
+       - source: sf.ethereum.type.v2.Block
+     output:
+      type: proto:traderjoe.dexcandlesv2.Swaps
+    
+
+  - name: store_tokens
+    kind: store
+    initialBlock: 17821282
+    updatePolicy: set
+    valueType: proto:traderjoe.dexcandlesv2.Token
+    inputs:
+      - map: map_pairs_created
+
+  - name: store_candles
+    kind: store
+    initialBlock: 17821282
+    updatePolicy: set
+    valueType: proto:traderjoe.dexcandlesv2.Candle
+    inputs:
+      - store: store_pairs
+      - map: map_swaps
+      
+  - name: graph_out
+    kind: map
+    inputs:
+      - store: store_pairs
+        mode: deltas
+      - store: store_tokens
+        mode: deltas
+      - store: store_candles
+        mode: deltas
+    output:
+      type: proto:substreams.entity.v1.EntityChanges

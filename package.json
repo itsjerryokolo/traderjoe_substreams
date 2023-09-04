@@ -1,0 +1,15 @@
+{
+  "name": "apecoin",
+  "license": "UNLICENSED",
+  "scripts": {
+    "build": "graph build",
+    "deploy": "graph deploy --node https://api.thegraph.com/deploy/ itsjerryokolo/dexcandles-v2 ",
+    "create-local": "graph create --node http://localhost:8020/ itsjerryokolo/dexcandles-v2",
+    "remove-local": "graph remove --node http://localhost:8020/ itsjerryokolo/dexcandles-v2",
+    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 itsjerryokolo/dexcandles-v2",
+    "test": "graph test"
+  },
+  "dependencies": {
+    "@graphprotocol/graph-cli": "0.51.1"
+  }
+}
