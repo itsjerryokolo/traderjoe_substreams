@@ -5,7 +5,10 @@ mod utils;
 use std::str::FromStr;
 
 use crate::utils::{
-    helper::{append_0x, generate_key, get_sorted_token0, get_sorted_token1},
+    helper::{
+        append_0x, decode_x, decode_y, generate_key, get_sorted_amount0, get_sorted_amount1,
+        get_sorted_token0, get_sorted_token1,
+    },
     pricing::get_price_y,
     rpc::get_token_data,
 };
@@ -31,7 +34,9 @@ use substreams::{
 };
 use utils::{
     constants::{CANDLESTICK_PERIODS, DEXCANDLES_FACTORY},
-    helper::get_sorted_price,
+    helper::{
+        bigint_to_i32, get_amount_traded, get_sorted_amount0, get_sorted_price, reverse_bytes,
+    },
 };
 
 #[substreams::handlers::map]
@@ -100,7 +105,7 @@ pub fn store_pairs(i: dexcandlesV2::Pairs, o: StoreSetProto<dexcandlesV2::Pair>)
 }
 
 // #[substreams::handlers::store]
-// pub fn store_totals(i: dexcandlesV2::Swaps, o: StoreAddBigInt) {
+// pub fn store_totals(i: StoreGetProto<dexcandlesV2::Candle>, o: StoreAddBigIntpop) {
 //     for swap in i.swaps {
 //         o.set(0, format!("TokenX: {}", pair.address), &pair);
 //         o.set(0, format!("TokenY: {}", pair.address), &pair);
@@ -144,16 +149,12 @@ pub fn store_candles(
                 let token1 = get_sorted_token1(&token_x_address, &token_y_address);
 
                 let price_y = get_price_y(
-                    BigInt::from_str(p.bin_step.as_str()).unwrap(),
-                    BigInt::from_str(s.id.as_str()).unwrap().to_i32(),
-                    BigInt::from_str(token_x_decimals.as_str())
-                        .unwrap()
-                        .to_i32(),
-                    BigInt::from_str(token_y_decimals.as_str())
-                        .unwrap()
-                        .to_i32(),
+                    bigint_to_i32(&p.bin_step),
+                    bigint_to_i32(&s.id),
+                    bigint_to_i32(&token_x_decimals),
+                    bigint_to_i32(&token_y_decimals),
                 );
-                let price_x = BigDecimal::from_str("1").unwrap() / &price_y;
+                let price_x = BigDecimal::one() / &price_y;
 
                 log::info!("PriceX : {}", &price_x.to_string());
                 log::info!("PriceY : {}", &price_y.to_string());
@@ -165,7 +166,8 @@ pub fn store_candles(
 
                 log::info!(&price.to_string());
 
-                let mut tokens = Vec::from(s.amounts_in);
+                let mut tokens = vec![];
+                tokens.extend_from_slice(&s.amounts_in);
                 tokens.extend_from_slice(&s.amounts_out);
 
                 for candle_period in CANDLESTICK_PERIODS {
@@ -180,9 +182,40 @@ pub fn store_candles(
                     candle_id.extend_from_slice(&period_bytes);
                     candle_id.extend_from_slice(&tokens);
 
+                    let amount_x = s.amounts_in.clone();
+                    let amount_y = s.amounts_out.clone();
+
+                    let amount_in_x = decode_x(reverse_bytes(&amount_x));
+                    let amount_in_y = decode_y(reverse_bytes(&amount_x));
+                    let amount_out_x = decode_x(reverse_bytes(&amount_y));
+                    let amount_out_y = decode_y(reverse_bytes(&amount_y));
+
+                    let amount_x_traded = get_amount_traded(
+                        amount_in_x,
+                        amount_out_x,
+                        BigInt::from_str(&token_x_decimals).unwrap().to_i32(),
+                    );
+                    let amount_y_traded = get_amount_traded(
+                        amount_in_y,
+                        amount_out_y,
+                        BigInt::from_str(&token_y_decimals).unwrap().to_i32(),
+                    );
+                    let amount_0_traded = get_sorted_amount0(
+                        &token_x_address,
+                        &token_y_address,
+                        &amount_x_traded.to_string(),
+                        &amount_y_traded.to_string(),
+                    );
+                    let amount_1_traded = get_sorted_amount1(
+                        &token_x_address,
+                        &token_y_address,
+                        &amount_x_traded.to_string(),
+                        &amount_y_traded.to_string(),
+                    );
+
                     o.set(
                         0,
-                        format!("Candle: {}", Hex(&candle_id).to_string()),
+                        generate_key("Candle", &Hex(&candle_id).to_string()),
                         &dexcandlesV2::Candle {
                             time: time_params.to_string(),
                             period: candle_period.to_string(),

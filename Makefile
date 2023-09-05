@@ -22,7 +22,7 @@ token:
 
 PHONY: ca
 ca: 
-	substreams run -e mainnet.eth.streamingfast.io:443 substreams.yaml graph_out -s 17835000 -t +10000 --debug-modules-output=store_candles -o json
+	substreams gui -e mainnet.eth.streamingfast.io:443 substreams.yaml graph_out -s 17835000 -t +50000 --debug-modules-output=store_candles 
 
 PHONY:pa
 pa: 
