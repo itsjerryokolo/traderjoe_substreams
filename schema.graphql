@@ -17,12 +17,12 @@ type Pair @entity {
 
 type Candle @entity {
   id: ID! # period start timestamp + tokenX + tokenY
-  time: Int!
-  period: Int!
-  lastBlock: Int!
+  time: BigInt!
+  period: BigInt!
+  lastBlock: BigInt!
 
-  token0: Bytes!
-  token1: Bytes!
+  token0: Token!
+  token1: Token!
 
   token0TotalAmount: BigInt!
   token1TotalAmount: BigInt!

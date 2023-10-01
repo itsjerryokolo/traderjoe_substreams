@@ -21,6 +21,7 @@ use substreams_entity_change::{pb::entity::EntityChanges, tables::Tables};
 
 use pb::traderjoe::dexcandlesv2 as dexcandlesV2;
 use substreams::{
+    pb::substreams::store_delta::Operation,
     scalar::{BigDecimal, BigInt},
     store::{DeltaProto, Deltas, StoreNew, StoreSet},
     Hex,
@@ -258,6 +259,99 @@ pub fn graph_out(
     candles: Deltas<DeltaProto<dexcandlesV2::Candle>>,
 ) -> Result<EntityChanges, Error> {
     let mut tables = Tables::new();
+
+    for delta in tokens.deltas {
+        let token_address = delta.key.as_str().split(":").last().unwrap();
+
+        match delta.operation {
+            Operation::Create => {
+                tables
+                    .create_row("Token", token_address)
+                    .set("symbol", &delta.new_value.symbol)
+                    .set("name", delta.new_value.name)
+                    .set(
+                        "decimals",
+                        BigInt::from_str(&delta.new_value.decimal).unwrap(),
+                    );
+            }
+            Operation::Update => {}
+            Operation::Delete => todo!(),
+            x => panic!("unsupported operation {:?}", x),
+        };
+    }
+
+    for delta in pairs.deltas {
+        let pair_address = delta.key.as_str().split(":").last().unwrap();
+
+        match delta.operation {
+            Operation::Create => {
+                tables
+                    .create_row("Pair", pair_address)
+                    .set("tokenX", &delta.new_value.token_x.unwrap().address)
+                    .set("tokenY", delta.new_value.token_y.unwrap().address)
+                    .set(
+                        "binStep",
+                        BigInt::from_str(&delta.new_value.bin_step).unwrap(),
+                    );
+            }
+            Operation::Update => {}
+            Operation::Delete => todo!(),
+            x => panic!("unsupported operation {:?}", x),
+        };
+    }
+
+    for delta in candles.deltas {
+        let candle_id = delta.key.as_str().split(":").last().unwrap();
+
+        match delta.operation {
+            Operation::Create => {
+                tables
+                    .create_row("Candle", candle_id)
+                    .set("time", BigInt::from_str(&delta.new_value.time).unwrap())
+                    .set("period", BigInt::from_str(&delta.new_value.period).unwrap())
+                    .set(
+                        "lastBlock",
+                        BigInt::from_str(&delta.new_value.last_block).unwrap(),
+                    )
+                    .set("token0", delta.new_value.token0)
+                    .set("token1", delta.new_value.token1)
+                    .set(
+                        "token0TotalAmount",
+                        BigInt::from_str(&delta.new_value.token0_amount_traded).unwrap(),
+                    )
+                    .set(
+                        "token1TotalAmount",
+                        BigInt::from_str(&delta.new_value.token1_amount_traded).unwrap(),
+                    )
+                    .set("high", BigDecimal::from_str(&delta.new_value.high).unwrap())
+                    .set("open", BigDecimal::from_str(&delta.new_value.open).unwrap())
+                    .set(
+                        "close",
+                        BigDecimal::from_str(&delta.new_value.close).unwrap(),
+                    )
+                    .set("low", BigDecimal::from_str(&delta.new_value.low).unwrap());
+            }
+            Operation::Update => {
+                let high: String = if delta.new_value.high > delta.old_value.high {
+                    delta.new_value.high
+                } else {
+                    delta.old_value.high
+                };
+                let low = if delta.new_value.low < delta.old_value.low {
+                    delta.new_value.low
+                } else {
+                    delta.old_value.low
+                };
+
+                tables
+                    .update_row("Candle", candle_id)
+                    .set("high", BigDecimal::from_str(&high).unwrap())
+                    .set("low", BigDecimal::from_str(&low).unwrap());
+            }
+            Operation::Delete => todo!(),
+            x => panic!("unsupported operation {:?}", x),
+        };
+    }
 
     let entity_changes = tables.to_entity_changes();
     Ok(entity_changes)

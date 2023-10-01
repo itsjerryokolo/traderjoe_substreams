@@ -3,12 +3,12 @@ schema:
   file: ./schema.graphql
 dataSources:
   - kind: substreams
-    name: traderjoe
+    name: TraderJoe
     network: mainnet
     source:
       package:
         moduleName: graph_out
-        file: ./traderjoe-v1.0.0.spkg
+        file: ./traderjoe-v0.0.1.spkg
     mapping:
       apiVersion: 0.0.5
       kind: substreams/graph-entities
