@@ -65,7 +65,7 @@ pub fn get_sorted_amount1(
     amount_y_traded: &str,
 ) -> String {
     let value: bool = compare_tokens(token_x, token_y);
-    if value == false {
+    if value == true {
         return amount_y_traded.to_string();
     } else {
         amount_x_traded.to_string()
@@ -107,10 +107,6 @@ pub fn decode_y(packed_amounts: Vec<u8>) -> BigInt {
     log::info!("y_rhs : {:?}", &y_rhs);
 
     y_rhs
-}
-
-pub fn reverse_bytes(amount: &Vec<u8>) -> Vec<u8> {
-    amount.iter().rev().cloned().collect()
 }
 
 pub fn get_amount_traded(amount_in: BigInt, amount_out: BigInt, token_decimals: i32) -> BigInt {

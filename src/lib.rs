@@ -34,7 +34,7 @@ use substreams::{
 };
 use utils::{
     constants::{CANDLESTICK_PERIODS, DEXCANDLES_FACTORY},
-    helper::{bigint_to_i32, get_amount_traded, reverse_bytes},
+    helper::{bigint_to_i32, get_amount_traded},
 };
 
 #[substreams::handlers::map]
@@ -101,14 +101,6 @@ pub fn store_pairs(i: dexcandlesV2::Pairs, o: StoreSetProto<dexcandlesV2::Pair>)
         o.set(0, generate_key("Pair", &pair.address), &pair);
     }
 }
-
-// #[substreams::handlers::store]
-// pub fn store_totals(i: StoreGetProto<dexcandlesV2::Candle>, o: StoreAddBigIntpop) {
-//     for swap in i.swaps {
-//         o.set(0, format!("TokenX: {}", pair.address), &pair);
-//         o.set(0, format!("TokenY: {}", pair.address), &pair);
-//     }
-// }
 
 #[substreams::handlers::store]
 pub fn store_candles(
@@ -180,38 +172,16 @@ pub fn store_candles(
                         &token1.split("0x").last().unwrap(),
                     );
 
-                    let amount_x = s.amounts_in.clone();
-                    let amount_y = s.amounts_out.clone();
+                    let amount_in = s.amounts_in.clone();
+                    let amount_out = s.amounts_out.clone();
 
-                    log::info!("AmountX : {:?}", &amount_x);
-                    log::info!("AmountY : {:?}", &amount_y);
+                    log::info!("AmountIn : {:?}", &amount_in);
+                    log::info!("AmountOut : {:?}", &amount_out);
 
-                    let reversed_amount_in_x_bytes = reverse_bytes(&amount_x);
-                    let reversed_amount_in_y_bytes = reverse_bytes(&amount_x);
-                    let reversed_amount_out_x_bytes = reverse_bytes(&amount_y);
-                    let reversed_amount_out_y_bytes = reverse_bytes(&amount_y);
-
-                    log::info!(
-                        "reversed_amount_in_x_bytes : {:?}",
-                        &reversed_amount_in_x_bytes
-                    );
-                    log::info!(
-                        "reversed_amount_in_y_bytes : {:?}",
-                        &reversed_amount_in_y_bytes
-                    );
-                    log::info!(
-                        "reversed_amount_out_x_bytes : {:?}",
-                        &reversed_amount_out_x_bytes
-                    );
-                    log::info!(
-                        "reversed_amount_out_y_bytes : {:?}",
-                        &reversed_amount_out_y_bytes
-                    );
-
-                    let amount_in_x = decode_x(reversed_amount_in_x_bytes);
-                    let amount_in_y = decode_y(reversed_amount_in_y_bytes);
-                    let amount_out_x = decode_x(reversed_amount_out_x_bytes);
-                    let amount_out_y = decode_y(reversed_amount_out_y_bytes);
+                    let amount_in_x = decode_x(amount_in.clone());
+                    let amount_in_y = decode_y(amount_in.clone());
+                    let amount_out_x = decode_x(amount_out.clone());
+                    let amount_out_y = decode_y(amount_out.clone());
 
                     log::info!("amount_in_x : {}", &amount_in_x.to_string());
                     log::info!("amount_in_y : {}", &amount_in_y.to_string());
@@ -288,9 +258,7 @@ pub fn graph_out(
     candles: Deltas<DeltaProto<dexcandlesV2::Candle>>,
 ) -> Result<EntityChanges, Error> {
     let mut tables = Tables::new();
-    //  token0TotalAmount :
-    //  token1TotalAmount :
-    //Set these fields from store_totals in Candles
+
     let entity_changes = tables.to_entity_changes();
     Ok(entity_changes)
 }
