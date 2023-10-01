@@ -7,7 +7,7 @@ use std::str::FromStr;
 use crate::utils::{
     helper::{
         append_0x, decode_x, decode_y, generate_key, get_sorted_amount0, get_sorted_amount1,
-        get_sorted_token0, get_sorted_token1,
+        get_sorted_price, get_sorted_token0, get_sorted_token1,
     },
     pricing::get_price_y,
     rpc::get_token_data,
@@ -34,9 +34,7 @@ use substreams::{
 };
 use utils::{
     constants::{CANDLESTICK_PERIODS, DEXCANDLES_FACTORY},
-    helper::{
-        bigint_to_i32, get_amount_traded, get_sorted_amount0, get_sorted_price, reverse_bytes,
-    },
+    helper::{bigint_to_i32, get_amount_traded, reverse_bytes},
 };
 
 #[substreams::handlers::map]
@@ -156,39 +154,69 @@ pub fn store_candles(
                 );
                 let price_x = BigDecimal::one() / &price_y;
 
-                log::info!("PriceX : {}", &price_x.to_string());
-                log::info!("PriceY : {}", &price_y.to_string());
-                log::info!("isSortedToken0 : {}", &token0.to_string());
-                log::info!("isSortedToken1 : {}", &token1.to_string());
+                log::info!("PriceX : {}", &price_x);
+                log::info!("PriceY : {}", &price_y);
+                log::info!("isSortedToken0 : {}", &token0);
+                log::info!("isSortedToken1 : {}", &token1);
 
                 let price =
                     get_sorted_price(&token0, &token1, &price_x.to_string(), &price_y.to_string());
 
                 log::info!(&price.to_string());
 
-                let mut tokens = vec![];
-                tokens.extend_from_slice(&s.amounts_in);
-                tokens.extend_from_slice(&s.amounts_out);
-
                 for candle_period in CANDLESTICK_PERIODS {
                     let timestamp = s.timestamp;
                     let time_id = timestamp / candle_period.to_u64().unwrap();
                     let time_params = &timestamp - (timestamp % candle_period.to_u64().unwrap());
 
-                    let time_bytes = time_id.to_be_bytes();
-                    let period_bytes = candle_period.to_be_bytes();
+                    let time_bytes = time_id.to_ne_bytes();
+                    let period_bytes = candle_period.to_ne_bytes();
 
-                    let mut candle_id = Vec::from(time_bytes);
-                    candle_id.extend_from_slice(&period_bytes);
-                    candle_id.extend_from_slice(&tokens);
+                    let candle_id = format!(
+                        "{}{}{}{}",
+                        Hex(&time_bytes[0..4]).to_string(),
+                        Hex(&period_bytes[0..4]).to_string(),
+                        &token0.split("0x").last().unwrap(),
+                        &token1.split("0x").last().unwrap(),
+                    );
 
                     let amount_x = s.amounts_in.clone();
                     let amount_y = s.amounts_out.clone();
 
-                    let amount_in_x = decode_x(reverse_bytes(&amount_x));
-                    let amount_in_y = decode_y(reverse_bytes(&amount_x));
-                    let amount_out_x = decode_x(reverse_bytes(&amount_y));
-                    let amount_out_y = decode_y(reverse_bytes(&amount_y));
+                    log::info!("AmountX : {:?}", &amount_x);
+                    log::info!("AmountY : {:?}", &amount_y);
+
+                    let reversed_amount_in_x_bytes = reverse_bytes(&amount_x);
+                    let reversed_amount_in_y_bytes = reverse_bytes(&amount_x);
+                    let reversed_amount_out_x_bytes = reverse_bytes(&amount_y);
+                    let reversed_amount_out_y_bytes = reverse_bytes(&amount_y);
+
+                    log::info!(
+                        "reversed_amount_in_x_bytes : {:?}",
+                        &reversed_amount_in_x_bytes
+                    );
+                    log::info!(
+                        "reversed_amount_in_y_bytes : {:?}",
+                        &reversed_amount_in_y_bytes
+                    );
+                    log::info!(
+                        "reversed_amount_out_x_bytes : {:?}",
+                        &reversed_amount_out_x_bytes
+                    );
+                    log::info!(
+                        "reversed_amount_out_y_bytes : {:?}",
+                        &reversed_amount_out_y_bytes
+                    );
+
+                    let amount_in_x = decode_x(reversed_amount_in_x_bytes);
+                    let amount_in_y = decode_y(reversed_amount_in_y_bytes);
+                    let amount_out_x = decode_x(reversed_amount_out_x_bytes);
+                    let amount_out_y = decode_y(reversed_amount_out_y_bytes);
+
+                    log::info!("amount_in_x : {}", &amount_in_x.to_string());
+                    log::info!("amount_in_y : {}", &amount_in_y.to_string());
+                    log::info!("amount_out_x : {}", &amount_out_x.to_string());
+                    log::info!("amount_out_y : {}", &amount_out_y.to_string());
 
                     let amount_x_traded = get_amount_traded(
                         amount_in_x,
@@ -200,6 +228,9 @@ pub fn store_candles(
                         amount_out_y,
                         BigInt::from_str(&token_y_decimals).unwrap().to_i32(),
                     );
+                    log::info!("amount_x_traded : {}", &amount_x_traded.to_string());
+                    log::info!("amount_y_traded : {}", &amount_y_traded.to_string());
+
                     let amount_0_traded = get_sorted_amount0(
                         &token_x_address,
                         &token_y_address,
@@ -213,15 +244,20 @@ pub fn store_candles(
                         &amount_y_traded.to_string(),
                     );
 
+                    log::info!("amount_0_traded : {}", &amount_0_traded.to_string());
+                    log::info!("amount_1_traded : {}", &amount_1_traded.to_string());
+
                     o.set(
                         0,
-                        generate_key("Candle", &Hex(&candle_id).to_string()),
+                        generate_key("Candle", &append_0x(&candle_id)),
                         &dexcandlesV2::Candle {
                             time: time_params.to_string(),
                             period: candle_period.to_string(),
                             last_block: s.timestamp.to_string(),
                             token0: token0.to_string(),
                             token1: token1.to_string(),
+                            token0_amount_traded: amount_0_traded,
+                            token1_amount_traded: amount_1_traded,
                             high: price.clone(),
                             open: price.clone(),
                             close: price.clone(),

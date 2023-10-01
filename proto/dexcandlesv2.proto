@@ -43,6 +43,8 @@ message Candle {
   string open = 9;
   string close = 10;
   string low = 11;
+  string token0_amount_traded = 12;
+  string token1_amount_traded = 13;
 }
 
 message Candles {

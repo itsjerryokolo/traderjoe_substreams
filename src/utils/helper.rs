@@ -1,7 +1,6 @@
-use std::{ops::BitAnd, str::FromStr};
+use std::str::FromStr;
 
 use num_traits::Signed;
-use std::ops::Shr;
 use substreams::log;
 
 use num_traits::ToPrimitive;
@@ -27,7 +26,9 @@ pub fn compare_tokens(token_x: &str, token_y: &str) -> bool {
 
 pub fn get_sorted_token0(token_x: &str, token_y: &str) -> String {
     let value: bool = compare_tokens(token_x, token_y);
-    if value == false {
+    if value == true {
+        log::info!("Value : {}", &value.to_string());
+
         return token_x.to_string();
     } else {
         token_y.to_string()
@@ -36,7 +37,7 @@ pub fn get_sorted_token0(token_x: &str, token_y: &str) -> String {
 
 pub fn get_sorted_token1(token_x: &str, token_y: &str) -> String {
     let value: bool = compare_tokens(token_x, token_y);
-    if value == false {
+    if value == true {
         return token_y.to_string();
     } else {
         token_x.to_string()
@@ -50,7 +51,7 @@ pub fn get_sorted_amount0(
     amount_y_traded: &str,
 ) -> String {
     let value: bool = compare_tokens(token_x, token_y);
-    if value == false {
+    if value == true {
         return amount_x_traded.to_string();
     } else {
         amount_y_traded.to_string()
@@ -77,7 +78,7 @@ pub fn bigint_to_i32(str: &str) -> i32 {
 
 pub fn get_sorted_price(token_x: &str, token_y: &str, value_0: &str, value_1: &str) -> String {
     let value: bool = compare_tokens(token_x, token_y);
-    if value == false {
+    if value == true {
         return value_0.to_string();
     } else {
         value_1.to_string()
@@ -90,14 +91,21 @@ pub fn generate_key(name: &str, val: &str) -> String {
 
 pub fn decode_x(packed_amounts: Vec<u8>) -> BigInt {
     let x: BigInt = num_bigint::BigInt::from_bytes_be(num_bigint::Sign::Plus, &packed_amounts);
-    let x_bit_and = x.bitand(BigInt::from(1).pow(128) - 1);
+    log::info!("x : {:?}", &x);
+
+    let x_bit_and = &x & (BigInt::from(1) << 128) - 1;
+    log::info!("x_bit_and : {:?}", &x_bit_and);
+
     x_bit_and
 }
 
 pub fn decode_y(packed_amounts: Vec<u8>) -> BigInt {
     let y = num_bigint::BigInt::from_bytes_be(num_bigint::Sign::Plus, &packed_amounts);
+    log::info!("y : {:?}", &y);
 
-    let y_rhs = y.shr(128);
+    let y_rhs = BigInt::from(y >> 128);
+    log::info!("y_rhs : {:?}", &y_rhs);
+
     y_rhs
 }
 

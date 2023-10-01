@@ -72,6 +72,10 @@ pub struct Candle {
     pub close: ::prost::alloc::string::String,
     #[prost(string, tag="11")]
     pub low: ::prost::alloc::string::String,
+    #[prost(string, tag="12")]
+    pub token0_amount_traded: ::prost::alloc::string::String,
+    #[prost(string, tag="13")]
+    pub token1_amount_traded: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
 #[derive(Clone, PartialEq, ::prost::Message)]
