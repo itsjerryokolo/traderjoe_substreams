@@ -197,7 +197,7 @@ pub fn store_candles(
                     let amount_y_traded = get_amount_traded(
                         amount_in_y,
                         amount_out_y,
-                        BigInt::from_str(&token_y_decimals).unwrap().to_i32(),
+                        bigint_to_i32(&token_y_decimals),
                     );
                     log::info!("amount_x_traded : {}", &amount_x_traded.to_string());
                     log::info!("amount_y_traded : {}", &amount_y_traded.to_string());
@@ -295,7 +295,7 @@ pub fn graph_out(
                     );
             }
             Operation::Update => {}
-            Operation::Delete => todo!(),
+            Operation::Delete => {}
             x => panic!("unsupported operation {:?}", x),
         };
     }
