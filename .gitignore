@@ -2,7 +2,7 @@
 target/
 .idea
 node_modules
-.log
+replay.log
 .DS_Store
 .vscode
 build
