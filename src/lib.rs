@@ -152,8 +152,12 @@ pub fn store_candles(
                 log::info!("isSortedToken0 : {}", &token0);
                 log::info!("isSortedToken1 : {}", &token1);
 
-                let price =
-                    get_sorted_price(&token0, &token1, &price_x.to_string(), &price_y.to_string());
+                let price = get_sorted_price(
+                    &token_x_address,
+                    &token_y_address,
+                    &price_x.to_string(),
+                    &price_y.to_string(),
+                );
 
                 log::info!(&price.to_string());
 
@@ -332,21 +336,48 @@ pub fn graph_out(
                     .set("low", BigDecimal::from_str(&delta.new_value.low).unwrap());
             }
             Operation::Update => {
-                let high: String = if delta.new_value.high > delta.old_value.high {
-                    delta.new_value.high
+                let high = if BigDecimal::from_str(&delta.new_value.open).unwrap()
+                    > BigDecimal::from_str(&delta.new_value.high).unwrap()
+                {
+                    BigDecimal::from_str(&delta.new_value.open).unwrap()
                 } else {
-                    delta.old_value.high
+                    BigDecimal::from_str(&delta.old_value.high).unwrap()
                 };
-                let low = if delta.new_value.low < delta.old_value.low {
-                    delta.new_value.low
+                let low = if BigDecimal::from_str(&delta.new_value.open).unwrap()
+                    < BigDecimal::from_str(&delta.new_value.low).unwrap()
+                {
+                    BigDecimal::from_str(&delta.new_value.open).unwrap()
                 } else {
-                    delta.old_value.low
+                    BigDecimal::from_str(&delta.new_value.low).unwrap()
                 };
+                let old_token0_total_amount =
+                    BigInt::from_str(&delta.old_value.token0_amount_traded).unwrap();
+                let old_token1_total_amount =
+                    BigInt::from_str(&delta.old_value.token1_amount_traded).unwrap();
+
+                let new_token0_total_amount =
+                    BigInt::from_str(&delta.new_value.token0_amount_traded).unwrap();
+                let new_token1_total_amount =
+                    BigInt::from_str(&delta.new_value.token1_amount_traded).unwrap();
+
+                let token0_total_amount = old_token0_total_amount + new_token0_total_amount;
+                let token1_total_amount = old_token1_total_amount + new_token1_total_amount;
 
                 tables
                     .update_row("Candle", candle_id)
-                    .set("high", BigDecimal::from_str(&high).unwrap())
-                    .set("low", BigDecimal::from_str(&low).unwrap());
+                    // .set("open", BigDecimal::from_str(&delta.new_value.open).unwrap())
+                    .set(
+                        "close",
+                        BigDecimal::from_str(&delta.new_value.close).unwrap(),
+                    )
+                    .set(
+                        "lastBlock",
+                        BigInt::from_str(&delta.new_value.last_block).unwrap(),
+                    )
+                    .set("token0TotalAmount", token0_total_amount)
+                    .set("token1TotalAmount", token1_total_amount)
+                    .set("high", high)
+                    .set("low", low);
             }
             Operation::Delete => todo!(),
             x => panic!("unsupported operation {:?}", x),
